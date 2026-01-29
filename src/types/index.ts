@@ -1,5 +1,5 @@
 /**
- * Types and Interfaces for InmoFacil Demo
+ * Types and Interfaces for InmoSimple Demo
  * Centralized type definitions for the entire application
  */
 
