@@ -33,6 +33,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     { id: 'propiedades', label: 'Propiedades', icon: 'fa-building' },
     { id: 'inquilinos', label: 'Inquilinos', icon: 'fa-users' },
     { id: 'contratos', label: 'Contratos', icon: 'fa-file-contract' },
+    { id: 'cobros', label: 'Cobros', icon: 'fa-money-bill-wave' },
     { id: 'configuracion', label: 'Configuración', icon: 'fa-cog' },
   ];
 
@@ -108,7 +109,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               }}
               className={`w-full text-left px-4 py-3 rounded-xl mb-2 transition-all flex items-center gap-3 group relative ${
                 activeTab === item.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                  ? `${currentTheme.bgClass} text-white shadow-lg ${currentTheme.shadowClass}`
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
               } ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? item.label : ''}

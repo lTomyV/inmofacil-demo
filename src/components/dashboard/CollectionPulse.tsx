@@ -36,14 +36,14 @@ export const CollectionPulse: React.FC<CollectionPulseProps> = ({
       <div className="mb-6">
         <div className="flex items-baseline gap-2 mb-2">
           <span className="text-4xl font-black text-slate-800 dark:text-white">
-            ${formatCurrency(totalCollected)}
+            {formatCurrency(totalCollected)}
           </span>
           <span className="text-slate-500 dark:text-slate-400 text-sm">
-            / ${formatCurrency(totalExpected)}
+            / {formatCurrency(totalExpected)}
           </span>
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Faltan cobrar: <span className="font-bold text-red-600 dark:text-red-400">${formatCurrency(remaining)}</span>
+          Faltan cobrar: <span className="font-bold text-red-600 dark:text-red-400">{formatCurrency(remaining)}</span>
         </p>
       </div>
 

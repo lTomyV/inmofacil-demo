@@ -9,10 +9,12 @@ export type PropertyType = "alquiler" | "venta";
 export type PropertyStatus = "disponible" | "alquilada";
 export type AppearanceMode = "light" | "dark" | "system";
 export type TicketPriority = "alta" | "media" | "baja";
-export type TicketStatus = "pendiente" | "en proceso" | "esperando presupuesto";
+export type TicketStatus = "pendiente" | "en proceso" | "esperando presupuesto" | "resuelto";
 export type TicketOrigin = "bot" | "manual";
 export type ViewType = "public" | "admin" | "tenant";
 export type PublicTab = "inicio" | "alquileres" | "ventas" | "contacto";
+export type PaymentReceiptStatus = "pendiente" | "aprobado" | "rechazado";
+export type PaymentMethod = "transferencia" | "efectivo" | "cheque" | "tarjeta" | "mercadopago";
 
 // ==================== ENTITIES ====================
 export interface Tenant {
@@ -68,6 +70,37 @@ export interface Ticket {
   status: TicketStatus;
   origin: TicketOrigin;
   date: string;
+  resolvedBy?: 'tenant' | 'agent';
+  resolvedDate?: string;
+}
+
+export interface PaymentReceipt {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  propertyAddress: string;
+  amount: number;
+  period: string;
+  uploadDate: string;
+  paymentDate: string;
+  method: PaymentMethod;
+  status: PaymentReceiptStatus;
+  receiptUrl?: string;
+  comments?: string;
+  reviewedBy?: string;
+  reviewDate?: string;
+}
+
+export interface ManualPayment {
+  id: string;
+  tenantId: string;
+  amount: number;
+  period: string;
+  paymentDate: string;
+  method: PaymentMethod;
+  comments: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 // ==================== CONFIGURATION ====================

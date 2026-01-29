@@ -74,7 +74,7 @@ export const DelinquentTable: React.FC<DelinquentTableProps> = ({ tenants }) => 
                   </td>
                   <td className="py-4 px-4 text-right">
                     <span className="font-bold text-lg text-slate-800 dark:text-white">
-                      ${formatCurrency(tenant.debtAmount)}
+                      {formatCurrency(tenant.debtAmount)}
                     </span>
                   </td>
                   <td className="py-4 px-4">

@@ -3,11 +3,11 @@
  * Custom hook for managing localStorage with TypeScript type safety
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction } from 'react';
 
 const STORAGE_PREFIX = 'inmo_v2_data_';
 
-export function useLocalStorage<T>(key: string, fallback: T): [T, (value: T) => void] {
+export function useLocalStorage<T>(key: string, fallback: T): [T, Dispatch<SetStateAction<T>>] {
   const storageKey = STORAGE_PREFIX + key;
 
   const [value, setValue] = useState<T>(() => {

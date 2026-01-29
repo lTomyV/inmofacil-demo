@@ -61,7 +61,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, config, on
           <div>
             <span className="text-xs text-slate-400 dark:text-slate-500 block uppercase font-bold tracking-wider">Precio</span>
             <span className={`text-xl font-bold ${currentTheme.textClass}`}>
-              ${formatCurrency(property.price)}
+              {formatCurrency(property.price)}
             </span>
           </div>
           <button 

@@ -1,12 +1,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { INITIAL_TENANT_CONFIG, INITIAL_PROPERTIES, INITIAL_TENANTS, INITIAL_CONTRACTS, THEMES } from './constants';
+import { INITIAL_TENANT_CONFIG, INITIAL_PROPERTIES, INITIAL_TENANTS, INITIAL_CONTRACTS, INITIAL_PAYMENT_RECEIPTS, THEMES } from './constants';
 import { PropertyCard } from './components/properties';
 import { AdminSidebar } from './components/layout';
 import { StatCard } from './components/shared';
 import { CollectionPulse, DelinquentTable, ContractTimeline, TicketList } from './components/dashboard';
 import { AuthModal } from './components/auth';
-import { Tenant, TenantConfig, Property, Contract, Theme, Ticket, AppearanceMode } from './types';
+import { PaymentsManager } from './components/payments';
+import { TenantPaymentHistory, UploadReceipt, ReportIssue, TenantTickets } from './components/tenant';
+import { Tenant, TenantConfig, Property, Contract, Theme, Ticket, AppearanceMode, PaymentReceipt } from './types';
 import { useLocalStorage, useDarkMode } from './hooks';
 import { openWhatsApp, getPropertyInquiryMessage } from './utils';
 
@@ -20,6 +22,12 @@ const App: React.FC = () => {
   const [properties, setProperties] = useLocalStorage<Property[]>('properties', INITIAL_PROPERTIES);
   const [tenants, setTenants] = useLocalStorage<Tenant[]>('tenants', INITIAL_TENANTS);
   const [contracts, setContracts] = useLocalStorage<Contract[]>('contracts', INITIAL_CONTRACTS);
+  const [paymentReceipts, setPaymentReceipts] = useLocalStorage<PaymentReceipt[]>('paymentReceipts', INITIAL_PAYMENT_RECEIPTS);
+  const [tickets, setTickets] = useLocalStorage<Ticket[]>('tickets', [
+    { id: 'tk1', title: 'Filtración en el baño principal', priority: 'alta', status: 'pendiente', origin: 'bot', date: 'Hace 2h' },
+    { id: 'tk2', title: 'Cambio de foco pasillo común', priority: 'baja', status: 'en proceso', origin: 'manual', date: 'Ayer' },
+    { id: 'tk3', title: 'Persiana trabada en Living', priority: 'media', status: 'esperando presupuesto', origin: 'bot', date: 'Hace 5h' },
+  ]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -27,6 +35,9 @@ const App: React.FC = () => {
   const [loginTab, setLoginTab] = useState<'login' | 'register'>('login');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [showUploadReceipt, setShowUploadReceipt] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   
   // --- FILTROS PÚBLICOS ---
   const [minPrice, setMinPrice] = useState<string>('');
@@ -48,12 +59,6 @@ const App: React.FC = () => {
   };
 
   // --- MOCK DATA PARA DASHBOARD ---
-  const tickets: Ticket[] = [
-    { id: 'tk1', title: 'Filtración en el baño principal', priority: 'alta', status: 'pendiente', origin: 'bot', date: 'Hace 2h' },
-    { id: 'tk2', title: 'Cambio de foco pasillo común', priority: 'baja', status: 'en proceso', origin: 'manual', date: 'Ayer' },
-    { id: 'tk3', title: 'Persiana trabada en Living', priority: 'media', status: 'esperando presupuesto', origin: 'bot', date: 'Hace 5h' },
-  ];
-
   const collectionPulse = {
     totalExpected: 5000000,
     totalCollected: 3250000,
@@ -95,9 +100,14 @@ const App: React.FC = () => {
   }, []);
 
   const paymentHistory = [
-    { id: 'h1', period: 'Mayo 2024', amount: 185000, date: '05/05/2024', status: 'Pagado' },
-    { id: 'h2', period: 'Abril 2024', amount: 185000, date: '08/04/2024', status: 'Pagado' },
+    { id: 'h1', period: 'Enero 2026', amount: 185000, date: '2026-01-08', status: 'Pagado' },
+    { id: 'h2', period: 'Diciembre 2025', amount: 185000, date: '2025-12-08', status: 'Pagado' },
+    { id: 'h3', period: 'Noviembre 2025', amount: 185000, date: '2025-11-10', status: 'Pagado' },
+    { id: 'h4', period: 'Octubre 2025', amount: 185000, date: '2025-10-08', status: 'Pagado' },
   ];
+
+  // Filter tickets for current tenant
+  const tenantTickets = tickets.filter(t => t.id === 'tk1' || t.id === 'tk3'); // Mock: showing some tickets for tenant
 
   const filteredRentals = useMemo(() => {
     return properties.filter(p => {
@@ -139,6 +149,27 @@ const App: React.FC = () => {
       );
     });
   }, [contracts, tenants, properties, adminSearchContract]);
+
+  // --- HANDLERS ---
+  const handleResolveTicket = (ticketId: string) => {
+    setTickets(prev => prev.map(t => 
+      t.id === ticketId 
+        ? { 
+            ...t, 
+            status: 'resuelto' as const,
+            resolvedBy: view === 'tenant' ? 'tenant' : 'agent',
+            resolvedDate: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          }
+        : t
+    ));
+  };
+
+  const handleUpdateProperty = (updatedProperty: Property) => {
+    setProperties(prev => prev.map(p => 
+      p.id === updatedProperty.id ? updatedProperty : p
+    ));
+    setEditingProperty(null);
+  };
 
   const resetData = () => {
     if (confirm("¿Restablecer base de datos? Se perderán todos tus cambios.")) {
@@ -236,7 +267,7 @@ const App: React.FC = () => {
 
               {selectedProperty.status === 'disponible' && (
                 <button 
-                  onClick={() => handleWhatsApp(config.whatsappNumber, `Hola, estoy interesado en ${selectedProperty.title}`)}
+                  onClick={() => openWhatsApp(config.whatsappNumber, `Hola, estoy interesado en ${selectedProperty.title}`)}
                   className={`w-full ${currentTheme.bgClass} text-white font-black py-5 rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 text-xl`}
                 >
                   <i className="fa-brands fa-whatsapp text-2xl"></i> Consultar Disponibilidad
@@ -244,6 +275,145 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  const EditPropertyModal = () => {
+    if (!editingProperty) return null;
+    
+    const [formData, setFormData] = useState<Property>(editingProperty);
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      handleUpdateProperty(formData);
+    };
+
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setEditingProperty(null)}></div>
+        <div className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden relative z-10 flex flex-col transition-all animate-in zoom-in-95 duration-200">
+          <div className={`p-6 ${currentTheme.bgClass} text-white flex justify-between items-center`}>
+            <div>
+              <h2 className="text-2xl font-black">Editar Propiedad</h2>
+              <p className="text-sm opacity-90 mt-1">Actualiza la información de la propiedad</p>
+            </div>
+            <button onClick={() => setEditingProperty(null)} className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center hover:bg-black/40 transition-colors">
+              <i className="fa-solid fa-xmark text-xl"></i>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Título</label>
+                <input 
+                  type="text" 
+                  value={formData.title}
+                  onChange={e => setFormData({...formData, title: e.target.value})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Precio</label>
+                <input 
+                  type="number" 
+                  value={formData.price}
+                  onChange={e => setFormData({...formData, price: parseInt(e.target.value)})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Dirección</label>
+                <input 
+                  type="text" 
+                  value={formData.address}
+                  onChange={e => setFormData({...formData, address: e.target.value})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Dormitorios</label>
+                <input 
+                  type="number" 
+                  value={formData.bedrooms}
+                  onChange={e => setFormData({...formData, bedrooms: parseInt(e.target.value)})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Tipo</label>
+                <select 
+                  value={formData.type}
+                  onChange={e => setFormData({...formData, type: e.target.value as 'alquiler' | 'venta'})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                >
+                  <option value="alquiler">Alquiler</option>
+                  <option value="venta">Venta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Estado</label>
+                <select 
+                  value={formData.status}
+                  onChange={e => setFormData({...formData, status: e.target.value as 'disponible' | 'alquilada'})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                >
+                  <option value="disponible">Disponible</option>
+                  <option value="alquilada">Alquilada</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">URL de Imagen</label>
+                <input 
+                  type="url" 
+                  value={formData.imageUrl}
+                  onChange={e => setFormData({...formData, imageUrl: e.target.value})}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Descripción</label>
+                <textarea 
+                  value={formData.description}
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  rows={4}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white resize-none"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button 
+                type="button"
+                onClick={() => setEditingProperty(null)}
+                className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit"
+                className={`flex-1 px-6 py-3 ${currentTheme.bgClass} text-white rounded-xl font-bold shadow-lg hover:brightness-110 transition-all`}
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
@@ -360,7 +530,7 @@ const App: React.FC = () => {
               <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-lg`}></i>
             </button>
             <button onClick={() => setIsLoginOpen(true)} className={`${currentTheme.bgClass} text-white px-5 md:px-6 py-2 md:py-2.5 rounded-full text-sm md:text-base font-bold shadow-lg ${currentTheme.shadowClass} hover:scale-105 transition-all`}>
-              Mi Inmo
+              Acceder
             </button>
           </div>
         </div>
@@ -464,6 +634,7 @@ const App: React.FC = () => {
       )}
 
       {PropertyDetailModal()}
+      {EditPropertyModal()}
     </div>
   );
 
@@ -573,8 +744,14 @@ const App: React.FC = () => {
                     <h4 className="font-bold truncate text-sm mb-1 dark:text-white">{p.title}</h4>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mb-3">{p.address}</p>
                     <div className="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-slate-800">
-                       <span className={`font-bold text-xs ${currentTheme.textClass}`}>${p.price.toLocaleString()}</span>
-                       <i className="fa-solid fa-pen-to-square text-slate-300 dark:text-slate-600 cursor-pointer hover:text-blue-500 transition-colors"></i>
+                       <span className={`font-bold text-xs ${currentTheme.textClass}`}>{p.price.toLocaleString()}</span>
+                       <button 
+                         onClick={() => setEditingProperty(p)}
+                         className={`${currentTheme.textClass} hover:scale-110 transition-transform`}
+                         title="Editar propiedad"
+                       >
+                         <i className="fa-solid fa-pen-to-square"></i>
+                       </button>
                     </div>
                   </div>
                 </div>
@@ -686,21 +863,90 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {adminTab === 'cobros' && (
+          <PaymentsManager
+            receipts={paymentReceipts}
+            onApproveReceipt={(receiptId) => {
+              setPaymentReceipts(prev => prev.map(r => 
+                r.id === receiptId 
+                  ? { ...r, status: 'aprobado', reviewedBy: 'Juan Dueño', reviewDate: new Date().toISOString() }
+                  : r
+              ));
+            }}
+            onRejectReceipt={(receiptId, reason) => {
+              setPaymentReceipts(prev => prev.map(r => 
+                r.id === receiptId 
+                  ? { ...r, status: 'rechazado', comments: reason, reviewedBy: 'Juan Dueño', reviewDate: new Date().toISOString() }
+                  : r
+              ));
+            }}
+            onCreateManualPayment={(payment) => {
+              const newReceipt: PaymentReceipt = {
+                id: `pr${Date.now()}`,
+                tenantId: payment.tenantId,
+                tenantName: tenants.find(t => t.id === payment.tenantId)?.name || 'Desconocido',
+                propertyAddress: 'Pago Manual',
+                amount: payment.amount,
+                period: payment.period,
+                uploadDate: new Date().toISOString(),
+                paymentDate: payment.paymentDate,
+                method: payment.method,
+                status: 'aprobado',
+                comments: payment.comments,
+                reviewedBy: 'Juan Dueño',
+                reviewDate: new Date().toISOString()
+              };
+              setPaymentReceipts(prev => [...prev, newReceipt]);
+            }}
+            theme={currentTheme}
+            isDark={isDark}
+          />
+        )}
+
         {adminTab === 'configuracion' && (
-          <div className="max-w-xl space-y-6 text-slate-800 dark:text-slate-200">
+          <div className="max-w-2xl space-y-6 text-slate-800 dark:text-slate-200">
             <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-              <h3 className="text-xl font-bold mb-6">Ajustes del Sistema</h3>
+              <h3 className="text-xl font-bold mb-6">Identidad de la Inmobiliaria</h3>
               <div className="space-y-6">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block tracking-widest">Apariencia</label>
-                  <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl transition-colors">
-                    {(['light', 'dark', 'system'] as AppearanceMode[]).map((mode) => (
+                  <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-3 block tracking-widest">Tema de Colores</label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Selecciona los colores característicos de tu inmobiliaria</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {THEMES.map((theme) => (
                       <button 
-                        key={mode} 
-                        onClick={() => setConfig({...config, appearance: mode})}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all capitalize ${config.appearance === mode ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                        key={theme.id} 
+                        onClick={() => setConfig({...config, themeId: theme.id})}
+                        className={`p-4 rounded-2xl border-2 transition-all text-left ${
+                          config.themeId === theme.id 
+                            ? `${theme.bgClass} border-transparent text-white shadow-lg scale-105` 
+                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
                       >
-                        {mode === 'light' ? 'Claro' : mode === 'dark' ? 'Oscuro' : 'Sistema'}
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl ${theme.bgClass} flex items-center justify-center ${config.themeId === theme.id ? 'bg-white/20' : ''}`}>
+                            <i className={`fa-solid fa-palette text-xl ${config.themeId === theme.id ? 'text-white' : 'text-white'}`}></i>
+                          </div>
+                          <div>
+                            <p className={`font-bold ${config.themeId === theme.id ? 'text-white' : 'text-slate-800 dark:text-white'}`}>
+                              {theme.name}
+                            </p>
+                            <p className={`text-xs ${config.themeId === theme.id ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {theme.id === 'ocean' && 'Profesional y confiable'}
+                              {theme.id === 'nature' && 'Fresco y natural'}
+                              {theme.id === 'midnight' && 'Elegante y moderno'}
+                              {theme.id === 'sunset' && 'Cálido y acogedor'}
+                              {theme.id === 'ruby' && 'Dinámico y enérgico'}
+                              {theme.id === 'violet' && 'Sofisticado y premium'}
+                              {theme.id === 'teal' && 'Innovador y tech'}
+                              {theme.id === 'amber' && 'Prestigioso y dorado'}
+                              {theme.id === 'rose' && 'Delicado y chic'}
+                              {theme.id === 'slate' && 'Neutro y corporativo'}
+                            </p>
+                          </div>
+                          {config.themeId === theme.id && (
+                            <i className="fa-solid fa-check ml-auto text-xl text-white"></i>
+                          )}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -719,6 +965,7 @@ const App: React.FC = () => {
         )}
       </main>
       {ContractDetailModal()}
+      {EditPropertyModal()}
     </div>
   );
 
@@ -734,40 +981,161 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 text-slate-800 dark:text-white animate-in fade-in duration-500">
+      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 text-slate-800 dark:text-white animate-in fade-in duration-500">
+        {/* Welcome Section */}
         <section>
-          <h2 className="text-2xl font-black mb-2">Hola, {currentTenant?.name}! 👋</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Panel de control de tu alquiler.</p>
+          <h2 className="text-3xl font-black mb-2">Hola, {currentTenant?.name}! 👋</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Gestiona tu alquiler de forma simple y rápida</p>
         </section>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => setShowUploadReceipt(true)}
+            className={`${currentTheme.bgClass} text-white p-6 rounded-2xl shadow-lg hover:scale-105 transition-all text-left`}
+          >
+            <i className="fa-solid fa-upload text-3xl mb-3"></i>
+            <h3 className="font-black text-lg">Subir Comprobante</h3>
+            <p className="text-sm opacity-90 mt-1">Informa tu pago del mes</p>
+          </button>
+
+          <button
+            onClick={() => setShowReportIssue(true)}
+            className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white p-6 rounded-2xl shadow-sm hover:shadow-lg hover:scale-105 transition-all text-left"
+          >
+            <i className="fa-solid fa-wrench text-3xl mb-3 text-orange-500"></i>
+            <h3 className="font-black text-lg">Reportar Problema</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Mantenimiento de tu propiedad</p>
+          </button>
+
+          <button
+            onClick={() => openWhatsApp(config.whatsappNumber, '¡Hola! Necesito ayuda con mi alquiler.')}
+            className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white p-6 rounded-2xl shadow-sm hover:shadow-lg hover:scale-105 transition-all text-left"
+          >
+            <i className="fa-brands fa-whatsapp text-3xl mb-3 text-green-500"></i>
+            <h3 className="font-black text-lg">Contactar</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Hablar con la inmobiliaria</p>
+          </button>
+        </div>
+
+        {/* Payment Card & Property */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Próximo Vencimiento</p>
-              <h3 className="text-2xl font-black mb-1">{nextPaymentDate}</h3>
-              <p className={`text-3xl font-black ${currentTheme.textClass}`}>${currentTenantContract?.monthlyAmount.toLocaleString()}</p>
+          <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-6 rounded-3xl shadow-lg text-white">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Próximo Vencimiento</p>
+                <h3 className="text-2xl font-black">{nextPaymentDate}</h3>
+              </div>
+              <i className="fa-solid fa-calendar-days text-3xl opacity-50"></i>
             </div>
-            <button className={`w-full mt-6 py-4 rounded-2xl ${currentTheme.bgClass} text-white font-black shadow-lg hover:brightness-110 active:scale-95 transition-all`}>Informar Pago</button>
+            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mt-4">
+              <p className="text-sm opacity-90 mb-1">Monto a pagar</p>
+              <p className="text-3xl font-black">${currentTenantContract?.monthlyAmount.toLocaleString()}</p>
+            </div>
           </div>
 
           {currentTenantProperty ? (
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
-              <img src={currentTenantProperty.imageUrl} className="h-32 w-full object-cover" alt="Hogar" />
-              <div className="p-4 flex flex-col flex-1 justify-between">
-                <div>
-                  <h4 className="font-bold truncate mb-1 dark:text-white">{currentTenantProperty.title}</h4>
-                  <p className="text-[10px] text-slate-500 flex items-center"><i className="fa-solid fa-location-dot mr-2"></i> {currentTenantProperty.address}</p>
-                </div>
-                <button onClick={() => setSelectedProperty(currentTenantProperty)} className="w-full mt-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl font-bold text-xs dark:text-slate-300 transition-colors">Ver Detalles</button>
+              <img src={currentTenantProperty.imageUrl} className="h-40 w-full object-cover" alt="Propiedad" />
+              <div className="p-6 flex flex-col flex-1">
+                <h4 className="font-black text-lg mb-2 dark:text-white">{currentTenantProperty.title}</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center mb-4">
+                  <i className="fa-solid fa-location-dot mr-2"></i>
+                  {currentTenantProperty.address}
+                </p>
+                <button 
+                  onClick={() => setSelectedProperty(currentTenantProperty)} 
+                  className={`mt-auto ${currentTheme.bgClass} text-white py-3 rounded-xl font-bold hover:brightness-110 transition-all`}
+                >
+                  Ver Detalles
+                </button>
               </div>
             </div>
           ) : (
-             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center text-center">
-               <p className="text-slate-400 font-bold">No tienes un contrato activo.</p>
-             </div>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center text-center">
+              <p className="text-slate-400 font-bold">No tienes un contrato activo.</p>
+            </div>
           )}
         </div>
+
+        {/* Payment History */}
+        <TenantPaymentHistory
+          paymentHistory={paymentHistory}
+          theme={currentTheme}
+          onUploadReceipt={() => setShowUploadReceipt(true)}
+        />
+
+        {/* Tickets */}
+        <TenantTickets
+          tickets={tenantTickets}
+          theme={currentTheme}
+          onReportIssue={() => setShowReportIssue(true)}
+          onResolveTicket={handleResolveTicket}
+        />
+
+        {/* Contract Details */}
+        {currentTenantContract && (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 transition-colors">
+            <h3 className="text-xl font-black mb-4 text-slate-800 dark:text-white">Detalles del Contrato</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Folio</p>
+                <p className="font-bold text-slate-800 dark:text-white">{currentTenantContract.folioNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Inicio</p>
+                <p className="font-bold text-slate-800 dark:text-white">{new Date(currentTenantContract.startDate).toLocaleDateString('es-ES')}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Vencimiento</p>
+                <p className="font-bold text-slate-800 dark:text-white">{new Date(currentTenantContract.endDate).toLocaleDateString('es-ES')}</p>
+              </div>
+              <div className="md:col-span-3">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Aumentos</p>
+                <p className="text-slate-700 dark:text-slate-300">{currentTenantContract.increases}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Modals */}
+      <UploadReceipt
+        isOpen={showUploadReceipt}
+        onClose={() => setShowUploadReceipt(false)}
+        onUpload={(receipt) => {
+          const newReceipt: PaymentReceipt = {
+            id: `pr${Date.now()}`,
+            tenantId: currentTenant.id,
+            tenantName: currentTenant.name,
+            propertyAddress: currentTenantProperty?.address || 'N/A',
+            amount: receipt.amount,
+            period: receipt.period,
+            uploadDate: new Date().toISOString(),
+            paymentDate: receipt.paymentDate,
+            method: receipt.method,
+            status: 'pendiente',
+            comments: receipt.comments
+          };
+          setPaymentReceipts(prev => [...prev, newReceipt]);
+          alert('¡Comprobante subido exitosamente! Será revisado pronto.');
+        }}
+        theme={currentTheme}
+        suggestedAmount={currentTenantContract?.monthlyAmount}
+        suggestedPeriod="Enero 2026"
+      />
+
+      <ReportIssue
+        isOpen={showReportIssue}
+        onClose={() => setShowReportIssue(false)}
+        onSubmit={(issue) => {
+          console.log('New issue reported:', issue);
+          alert('¡Problema reportado exitosamente! Nos contactaremos pronto.');
+        }}
+        theme={currentTheme}
+        whatsappNumber={config.whatsappNumber}
+      />
+
       {PropertyDetailModal()}
     </div>
   );
@@ -795,10 +1163,10 @@ const App: React.FC = () => {
           {view !== 'public' && <button onClick={() => setView('public')} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 font-bold text-xs flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap"><i className="fa-solid fa-globe text-indigo-600"></i> Sitio Público</button>}
         </div>
         <div className="relative">
-          <button className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform active:scale-95">
+          <button className="demo-button text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform active:scale-95">
             <i className="fa-solid fa-eye text-lg md:text-xl"></i>
           </button>
-          <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[7px] md:text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase shadow-lg ring-2 ring-white">Demo</span>
+          <span className="demo-badge absolute -top-1 -right-1 bg-rose-500 text-white text-[7px] md:text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase shadow-lg ring-2 ring-white dark:ring-slate-900">Demo</span>
         </div>
       </div>
     </>

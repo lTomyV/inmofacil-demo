@@ -3,7 +3,7 @@
  * Mock data for tenants, properties, contracts, and configuration
  */
 
-import { Tenant, Property, TenantConfig, Contract } from '../types';
+import { Tenant, Property, TenantConfig, Contract, PaymentReceipt } from '../types';
 
 export const INITIAL_TENANT_CONFIG: TenantConfig = {
   name: "Inmobiliaria Libertador",
@@ -347,4 +347,78 @@ export const INITIAL_CONTRACTS: Contract[] = [
     },
     increases: 'Aumento cuatrimestral del 25% fijo'
   },
+];
+
+export const INITIAL_PAYMENT_RECEIPTS: PaymentReceipt[] = [
+  {
+    id: 'pr1',
+    tenantId: 't2',
+    tenantName: 'Lucia Fernandez',
+    propertyAddress: 'Loft UAP Belgrano 120',
+    amount: 150000,
+    period: 'Enero 2026',
+    uploadDate: '2026-01-28T10:30:00',
+    paymentDate: '2026-01-25',
+    method: 'transferencia',
+    status: 'pendiente',
+    receiptUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=400',
+    comments: 'Transferencia desde Banco Nación'
+  },
+  {
+    id: 'pr2',
+    tenantId: 't3',
+    tenantName: 'Carlos Rodriguez',
+    propertyAddress: 'Duplex Jardín Mitre 780',
+    amount: 125000,
+    period: 'Enero 2026',
+    uploadDate: '2026-01-27T14:15:00',
+    paymentDate: '2026-01-27',
+    method: 'mercadopago',
+    status: 'pendiente',
+    receiptUrl: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&q=80&w=400',
+    comments: 'Pago por MercadoPago'
+  },
+  {
+    id: 'pr3',
+    tenantId: 't4',
+    tenantName: 'Sofia Martinez',
+    propertyAddress: 'Depto Premium San Martín 1200',
+    amount: 220000,
+    period: 'Enero 2026',
+    uploadDate: '2026-01-26T09:00:00',
+    paymentDate: '2026-01-26',
+    method: 'transferencia',
+    status: 'aprobado',
+    receiptUrl: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&q=80&w=400',
+    reviewedBy: 'Juan Dueño',
+    reviewDate: '2026-01-26T16:30:00'
+  },
+  {
+    id: 'pr4',
+    tenantId: 't1',
+    tenantName: 'Mateo Gomez',
+    propertyAddress: 'Monoambiente Los Robles 450',
+    amount: 185000,
+    period: 'Diciembre 2025',
+    uploadDate: '2026-01-10T11:20:00',
+    paymentDate: '2026-01-08',
+    method: 'transferencia',
+    status: 'rechazado',
+    comments: 'Comprobante ilegible',
+    reviewedBy: 'Juan Dueño',
+    reviewDate: '2026-01-10T15:00:00'
+  },
+  {
+    id: 'pr5',
+    tenantId: 't5',
+    tenantName: 'Pablo Torres',
+    propertyAddress: 'Casa Centro 25 de Mayo 88',
+    amount: 275000,
+    period: 'Enero 2026',
+    uploadDate: '2026-01-29T08:45:00',
+    paymentDate: '2026-01-29',
+    method: 'transferencia',
+    status: 'pendiente',
+    receiptUrl: 'https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&q=80&w=400'
+  }
 ];
