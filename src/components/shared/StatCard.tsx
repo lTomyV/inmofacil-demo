@@ -1,7 +1,11 @@
+/**
+ * StatCard Component
+ * Reusable card component for displaying statistics
+ */
 
 import React from 'react';
 
-interface StatCardProps {
+export interface StatCardProps {
   label: string;
   value: string;
   icon: string;
@@ -9,7 +13,7 @@ interface StatCardProps {
   color: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend, color }) => {
+export const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend, color }) => {
   return (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
       <div className="flex items-center justify-between mb-4">
@@ -27,5 +31,3 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend, color })
     </div>
   );
 };
-
-export default StatCard;

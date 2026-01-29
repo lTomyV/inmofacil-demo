@@ -1,35 +1,31 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_TENANT_CONFIG, INITIAL_PROPERTIES, INITIAL_TENANTS, INITIAL_CONTRACTS, THEMES } from './constants';
-import PropertyCard from './components/PropertyCard';
-import AdminSidebar from './components/AdminSidebar';
-import StatCard from './components/StatCard';
-import CollectionPulse from './components/CollectionPulse';
-import DelinquentTable from './components/DelinquentTable';
-import ContractTimeline from './components/ContractTimeline';
-import TicketList from './components/TicketList';
+import { PropertyCard } from './components/properties';
+import { AdminSidebar } from './components/layout';
+import { StatCard } from './components/shared';
+import { CollectionPulse, DelinquentTable, ContractTimeline, TicketList } from './components/dashboard';
 import { Tenant, TenantConfig, Property, Contract, Theme, Ticket, AppearanceMode } from './types';
+import { useLocalStorage, useDarkMode } from './hooks';
+import { openWhatsApp, getPropertyInquiryMessage } from './utils';
 
 const App: React.FC = () => {
-  const getInitialData = <T,>(key: string, fallback: T): T => {
-    const saved = localStorage.getItem('inmo_v2_data_' + key);
-    return saved ? JSON.parse(saved) : fallback;
-  };
-
   const [view, setView] = useState<'public' | 'admin' | 'tenant'>('public');
   const [adminTab, setAdminTab] = useState<string>('dashboard');
   const [publicTab, setPublicTab] = useState<'inicio' | 'alquileres' | 'ventas' | 'contacto'>('inicio');
-  const [config, setConfig] = useState<TenantConfig>(() => getInitialData('config', INITIAL_TENANT_CONFIG));
+  
+  // Use custom hooks for localStorage
+  const [config, setConfig] = useLocalStorage<TenantConfig>('config', INITIAL_TENANT_CONFIG);
+  const [properties, setProperties] = useLocalStorage<Property[]>('properties', INITIAL_PROPERTIES);
+  const [tenants, setTenants] = useLocalStorage<Tenant[]>('tenants', INITIAL_TENANTS);
+  const [contracts, setContracts] = useLocalStorage<Contract[]>('contracts', INITIAL_CONTRACTS);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginTab, setLoginTab] = useState<'login' | 'register'>('login');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   
-  const [properties, setProperties] = useState<Property[]>(() => getInitialData('properties', INITIAL_PROPERTIES));
-  const [tenants, setTenants] = useState<Tenant[]>(() => getInitialData('tenants', INITIAL_TENANTS));
-  const [contracts, setContracts] = useState<Contract[]>(() => getInitialData('contracts', INITIAL_CONTRACTS));
-
   // --- FILTROS PÚBLICOS ---
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
@@ -41,39 +37,8 @@ const App: React.FC = () => {
   const [adminSearchTenant, setAdminSearchTenant] = useState('');
   const [adminSearchContract, setAdminSearchContract] = useState('');
 
-  // --- DARK MODE LOGIC ---
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const updateAppearance = () => {
-      if (config.appearance === 'dark') {
-        setIsDark(true);
-      } else if (config.appearance === 'light') {
-        setIsDark(false);
-      } else {
-        setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
-      }
-    };
-
-    updateAppearance();
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if (config.appearance === 'system') {
-        setIsDark(mediaQuery.matches);
-      }
-    };
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, [config.appearance]);
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+  // Use custom dark mode hook
+  const isDark = useDarkMode(config.appearance);
 
   const toggleAppearance = () => {
     const nextMode: AppearanceMode = isDark ? 'light' : 'dark';
@@ -132,13 +97,6 @@ const App: React.FC = () => {
     { id: 'h2', period: 'Abril 2024', amount: 185000, date: '08/04/2024', status: 'Pagado' },
   ];
 
-  useEffect(() => {
-    localStorage.setItem('inmo_v2_data_config', JSON.stringify(config));
-    localStorage.setItem('inmo_v2_data_properties', JSON.stringify(properties));
-    localStorage.setItem('inmo_v2_data_tenants', JSON.stringify(tenants));
-    localStorage.setItem('inmo_v2_data_contracts', JSON.stringify(contracts));
-  }, [config, properties, tenants, contracts]);
-
   const filteredRentals = useMemo(() => {
     return properties.filter(p => {
       if (p.type !== 'alquiler') return false;
@@ -179,11 +137,6 @@ const App: React.FC = () => {
       );
     });
   }, [contracts, tenants, properties, adminSearchContract]);
-
-  const handleWhatsApp = (number: string, message: string) => {
-    const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
 
   const resetData = () => {
     if (confirm("¿Restablecer base de datos? Se perderán todos tus cambios.")) {
@@ -545,10 +498,7 @@ const App: React.FC = () => {
             />
 
             {/* Tabla de Morosos Críticos */}
-            <DelinquentTable 
-              tenants={delinquentTenants}
-              onWhatsApp={handleWhatsApp}
-            />
+            <DelinquentTable tenants={delinquentTenants} />
 
             {/* Semáforo de Vencimientos */}
             <ContractTimeline data={contractTimeline} />

@@ -1,44 +1,9 @@
+/**
+ * Initial Data for Development
+ * Mock data for tenants, properties, contracts, and configuration
+ */
 
-import { Tenant, Property, TenantConfig, Contract, Theme } from './types';
-
-export const THEMES: Theme[] = [
-  { 
-    id: "ocean", 
-    name: "Ocean Blue", 
-    primaryClass: "blue-600", 
-    bgClass: "bg-blue-600", 
-    textClass: "text-blue-600", 
-    shadowClass: "shadow-blue-600/20",
-    accentClass: "bg-blue-50"
-  },
-  { 
-    id: "nature", 
-    name: "Emerald Nature", 
-    primaryClass: "emerald-600", 
-    bgClass: "bg-emerald-600", 
-    textClass: "text-emerald-600", 
-    shadowClass: "shadow-emerald-600/20",
-    accentClass: "bg-emerald-50"
-  },
-  { 
-    id: "midnight", 
-    name: "Midnight Indigo", 
-    primaryClass: "indigo-600", 
-    bgClass: "bg-indigo-600", 
-    textClass: "text-indigo-600", 
-    shadowClass: "shadow-indigo-600/20",
-    accentClass: "bg-indigo-50"
-  },
-  { 
-    id: "sunset", 
-    name: "Warm Sunset", 
-    primaryClass: "orange-600", 
-    bgClass: "bg-orange-600", 
-    textClass: "text-orange-600", 
-    shadowClass: "shadow-orange-600/20",
-    accentClass: "bg-orange-50"
-  }
-];
+import { Tenant, Property, TenantConfig, Contract } from '../types';
 
 export const INITIAL_TENANT_CONFIG: TenantConfig = {
   name: "Inmobiliaria Libertador",
@@ -49,7 +14,14 @@ export const INITIAL_TENANT_CONFIG: TenantConfig = {
 };
 
 export const INITIAL_TENANTS: Tenant[] = [
-  { id: "t1", name: "Mateo Gomez", phone: "5493434111222", status: "Al día", debtAmount: 0, daysLate: 0 },
+  { 
+    id: "t1", 
+    name: "Mateo Gomez", 
+    phone: "5493434111222", 
+    status: "Al día", 
+    debtAmount: 0, 
+    daysLate: 0 
+  },
   { 
     id: "t2", 
     name: "Lucia Fernandez", 
@@ -72,7 +44,14 @@ export const INITIAL_TENANTS: Tenant[] = [
       phone: "5493434777888"
     }
   },
-  { id: "t4", name: "Sofia Martinez", phone: "5493434999000", status: "Al día", debtAmount: 0, daysLate: 0 },
+  { 
+    id: "t4", 
+    name: "Sofia Martinez", 
+    phone: "5493434999000", 
+    status: "Al día", 
+    debtAmount: 0, 
+    daysLate: 0 
+  },
   { 
     id: "t5", 
     name: "Elena Paz", 
