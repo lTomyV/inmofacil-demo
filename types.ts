@@ -2,6 +2,7 @@
 export type PaymentStatus = "Al día" | "Atrasado" | "En Mora";
 export type PropertyType = "alquiler" | "venta";
 export type PropertyStatus = "disponible" | "alquilada";
+export type AppearanceMode = "light" | "dark" | "system";
 
 export interface Tenant {
   id: string;
@@ -10,6 +11,7 @@ export interface Tenant {
   status: PaymentStatus;
   debtAmount: number;
   daysLate: number;
+  avatar?: string;
   guarantor?: {
     name: string;
     phone: string;
@@ -27,8 +29,8 @@ export interface Property {
   type: PropertyType;
   status: PropertyStatus;
   featured: boolean;
-  tenantId?: string; // Link to Tenant
-  contractId?: string; // Link to Contract
+  tenantId?: string;
+  contractId?: string;
 }
 
 export interface Contract {
@@ -39,11 +41,38 @@ export interface Contract {
   endDate: string;
   monthlyAmount: number;
   status: "vigente" | "finalizado";
+  folioNumber: string;
+  guarantor: {
+    name: string;
+    phone: string;
+    dni: string;
+  };
+  increases: string; // Descripción de los aumentos estipulados
+}
+
+export interface Ticket {
+  id: string;
+  title: string;
+  priority: "alta" | "media" | "baja";
+  status: "pendiente" | "en proceso" | "esperando presupuesto";
+  origin: "bot" | "manual";
+  date: string;
+}
+
+export interface Theme {
+  id: string;
+  name: string;
+  primaryClass: string; 
+  bgClass: string;      
+  textClass: string;    
+  shadowClass: string;  
+  accentClass: string;  
 }
 
 export interface TenantConfig {
   name: string;
-  primaryColor: string;
+  themeId: string;
   logoText: string;
   whatsappNumber: string;
+  appearance: AppearanceMode;
 }

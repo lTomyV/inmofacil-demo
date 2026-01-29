@@ -1,5 +1,6 @@
+
 {
-  "name": "Copy of InmoFacil - SaaS Inmobiliario White Label",
-  "description": "Una plataforma de gestión inmobiliaria marca blanca para administradores de propiedades, con enfoque en cobranza y comunicación vía WhatsApp.",
+  "name": "InmoFacil - Demo",
+  "description": "Plataforma SaaS Inmobiliaria White Label. Prototipo funcional para gestión de alquileres y ventas.",
   "requestFramePermissions": []
 }
