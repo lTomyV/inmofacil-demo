@@ -56,7 +56,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 transition-all duration-300 flex flex-col ${
+        className={`fixed top-0 left-0 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 transition-all duration-300 flex flex-col overflow-hidden ${
           isCollapsed ? 'w-20' : 'w-72'
         } ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -75,18 +75,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 </p>
               </div>
             )}
-            {isCollapsed && (
-              <div className="w-full flex justify-center">
-                <div className={`w-10 h-10 rounded-xl ${currentTheme.bgClass} flex items-center justify-center text-white text-lg font-bold`}>
-                  🏠
-                </div>
-              </div>
-            )}
             
             {/* Collapse Toggle Button - Desktop only */}
             <button
               onClick={onToggleCollapse}
-              className="hidden md:flex w-8 h-8 items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+              className={`hidden md:flex w-8 h-8 items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all ${
+                isCollapsed ? 'mx-auto' : ''
+              }`}
               title={isCollapsed ? 'Expandir' : 'Contraer'}
             >
               <i className={`fa-solid ${isCollapsed ? 'fa-angles-right' : 'fa-angles-left'} text-sm`}></i>
@@ -103,7 +98,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 flex-1 overflow-y-auto">
+        <nav className="p-4 flex-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => (
             <button
               key={item.id}
