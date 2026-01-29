@@ -5,6 +5,7 @@ import { PropertyCard } from './components/properties';
 import { AdminSidebar } from './components/layout';
 import { StatCard } from './components/shared';
 import { CollectionPulse, DelinquentTable, ContractTimeline, TicketList } from './components/dashboard';
+import { AuthModal } from './components/auth';
 import { Tenant, TenantConfig, Property, Contract, Theme, Ticket, AppearanceMode } from './types';
 import { useLocalStorage, useDarkMode } from './hooks';
 import { openWhatsApp, getPropertyInquiryMessage } from './utils';
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   const [contracts, setContracts] = useLocalStorage<Contract[]>('contracts', INITIAL_CONTRACTS);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginTab, setLoginTab] = useState<'login' | 'register'>('login');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -466,8 +468,16 @@ const App: React.FC = () => {
   );
 
   const AdminView = (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:pl-64 transition-colors">
-      <AdminSidebar config={config} activeTab={adminTab} onTabChange={setAdminTab} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 transition-all duration-300 ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-72'}`}>
+      <AdminSidebar 
+        config={config} 
+        activeTab={adminTab} 
+        onTabChange={setAdminTab} 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 h-16 flex items-center justify-between sticky top-0 z-30 transition-colors">
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-400"><i className="fa-solid fa-bars text-xl"></i></button>
         <span className="font-bold text-slate-800 dark:text-white">{config.logoText}</span>
@@ -767,6 +777,16 @@ const App: React.FC = () => {
       {view === 'public' && PublicView}
       {view === 'admin' && AdminView}
       {view === 'tenant' && TenantView}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        activeTab={loginTab}
+        onTabChange={setLoginTab}
+        theme={currentTheme}
+        isDark={isDark}
+      />
 
       <div className="fixed bottom-6 right-6 z-[100] group flex flex-col items-end">
         <div className="flex flex-col items-end gap-3 pb-4 pointer-events-none group-hover:pointer-events-auto opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
