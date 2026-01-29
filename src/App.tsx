@@ -187,6 +187,28 @@ const App: React.FC = () => {
       "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=800"
     ];
 
+    const handleShareProperty = async () => {
+      const shareText = `${selectedProperty.title} - ${selectedProperty.address} | ${formatCurrency(selectedProperty.price)}`;
+      const shareUrl = window.location.href;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: selectedProperty.title, text: shareText, url: shareUrl });
+        } catch {
+          // User cancelled share
+        }
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareText} - ${shareUrl}`);
+        alert('Enlace copiado para compartir.');
+        return;
+      }
+
+      alert(`${shareText} - ${shareUrl}`);
+    };
+
     return (
       <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setSelectedProperty(null)}></div>
@@ -265,14 +287,22 @@ const App: React.FC = () => {
                 </p>
               </div>
 
-              {selectedProperty.status === 'disponible' && (
-                <button 
-                  onClick={() => openWhatsApp(config.whatsappNumber, `Hola, estoy interesado en ${selectedProperty.title}`)}
-                  className={`w-full ${currentTheme.bgClass} text-white font-black py-5 rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 text-xl`}
+              <div className="flex flex-col md:flex-row gap-4">
+                {selectedProperty.status === 'disponible' && (
+                  <button 
+                    onClick={() => openWhatsApp(config.whatsappNumber, `Hola, estoy interesado en ${selectedProperty.title}`)}
+                    className={`flex-1 ${currentTheme.bgClass} text-white font-black py-5 rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 text-xl`}
+                  >
+                    <i className="fa-brands fa-whatsapp text-2xl"></i> Consultar Disponibilidad
+                  </button>
+                )}
+                <button
+                  onClick={handleShareProperty}
+                  className="flex-1 bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-3 text-xl"
                 >
-                  <i className="fa-brands fa-whatsapp text-2xl"></i> Consultar Disponibilidad
+                  <i className="fa-solid fa-share-nodes text-2xl"></i> Compartir
                 </button>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -281,9 +311,13 @@ const App: React.FC = () => {
   };
 
   const EditPropertyModal = () => {
-    if (!editingProperty) return null;
-    
-    const [formData, setFormData] = useState<Property>(editingProperty);
+    const [formData, setFormData] = useState<Property | null>(editingProperty);
+
+    useEffect(() => {
+      setFormData(editingProperty);
+    }, [editingProperty]);
+
+    if (!formData) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -314,6 +348,16 @@ const App: React.FC = () => {
                   onChange={e => setFormData({...formData, title: e.target.value})}
                   className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Referencia</label>
+                <input 
+                  type="text" 
+                  value={`#${formData.id}`}
+                  className="w-full p-3 bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-500 dark:text-slate-400"
+                  disabled
                 />
               </div>
 
@@ -349,6 +393,20 @@ const App: React.FC = () => {
                   required
                   min="1"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Destacada</label>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, featured: !formData.featured })}
+                  className={`w-full h-[46px] rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors ${formData.featured ? `${currentTheme.bgClass} text-white` : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                >
+                  <span className="text-sm font-bold">{formData.featured ? 'Sí, destacar' : 'No destacar'}</span>
+                  <div className={`w-12 h-6 rounded-full relative ${formData.featured ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.featured ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                  </div>
+                </button>
               </div>
 
               <div>
@@ -634,7 +692,6 @@ const App: React.FC = () => {
       )}
 
       {PropertyDetailModal()}
-      {EditPropertyModal()}
     </div>
   );
 
