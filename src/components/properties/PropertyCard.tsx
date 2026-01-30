@@ -6,7 +6,7 @@
 import React from 'react';
 import { Property, TenantConfig } from '../../types';
 import { THEMES } from '../../constants';
-import { formatCurrency, getPropertyInquiryMessage, openWhatsApp } from '../../utils';
+import { formatCurrency } from '../../utils';
 
 export interface PropertyCardProps {
   property: Property;
@@ -17,10 +17,9 @@ export interface PropertyCardProps {
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property, config, onClick }) => {
   const currentTheme = THEMES.find(t => t.id === config.themeId) || THEMES[0];
 
-  const handleConsult = (e: React.MouseEvent) => {
+  const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const message = getPropertyInquiryMessage(property.title);
-    openWhatsApp(config.whatsappNumber, message);
+    onClick?.(property);
   };
 
   return (
@@ -65,11 +64,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, config, on
             </span>
           </div>
           <button 
-            disabled={property.status === 'alquilada' && property.type === 'alquiler'}
-            className={`${currentTheme.bgClass} text-white px-4 py-2 rounded-xl text-sm font-bold hover:brightness-110 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
-            onClick={handleConsult}
+            className={`${currentTheme.bgClass} text-white px-4 py-2 rounded-xl text-sm font-bold hover:brightness-110 transition-all active:scale-95`}
+            onClick={handleViewDetails}
           >
-            {property.status === 'alquilada' && property.type === 'alquiler' ? 'Ocupado' : 'Consultar'}
+            Ver más
           </button>
         </div>
       </div>

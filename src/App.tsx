@@ -10,7 +10,27 @@ import { PaymentsManager } from './components/payments';
 import { TenantPaymentHistory, UploadReceipt, ReportIssue, TenantTickets } from './components/tenant';
 import { Tenant, TenantConfig, Property, Contract, Theme, Ticket, AppearanceMode, PaymentReceipt } from './types';
 import { useLocalStorage, useDarkMode } from './hooks';
-import { openWhatsApp, getPropertyInquiryMessage } from './utils';
+import { openWhatsApp, formatCurrency } from './utils';
+
+type UserProfile = {
+  name: string;
+  email: string;
+  phone: string;
+  avatarUrl: string;
+  role: string;
+  bio: string;
+  receiveNotifications: boolean;
+  showOnlineStatus: boolean;
+};
+
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'U';
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<'public' | 'admin' | 'tenant'>('public');
@@ -38,6 +58,30 @@ const App: React.FC = () => {
   const [showUploadReceipt, setShowUploadReceipt] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [isPublicNavOpen, setIsPublicNavOpen] = useState(false);
+  const [profileView, setProfileView] = useState<'agent' | 'tenant' | null>(null);
+
+  const [agentProfile, setAgentProfile] = useLocalStorage<UserProfile>('agentProfile', {
+    name: 'Juan Dueño',
+    email: 'juan@inmofacil.com',
+    phone: '',
+    avatarUrl: '',
+    role: 'Agente Inmobiliario',
+    bio: '',
+    receiveNotifications: true,
+    showOnlineStatus: true
+  });
+
+  const [tenantProfile, setTenantProfile] = useLocalStorage<UserProfile>('tenantProfile', {
+    name: INITIAL_TENANTS[0]?.name || 'Inquilino',
+    email: '',
+    phone: INITIAL_TENANTS[0]?.phone || '',
+    avatarUrl: '',
+    role: 'Inquilino',
+    bio: '',
+    receiveNotifications: true,
+    showOnlineStatus: true
+  });
   
   // --- FILTROS PÚBLICOS ---
   const [minPrice, setMinPrice] = useState<string>('');
@@ -477,6 +521,206 @@ const App: React.FC = () => {
     );
   };
 
+  const ProfileModal = () => {
+    const [formData, setFormData] = useState<UserProfile>(agentProfile);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    useEffect(() => {
+      if (!profileView) return;
+      const profile = profileView === 'agent' ? agentProfile : tenantProfile;
+      setFormData(profile);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    }, [profileView, agentProfile, tenantProfile]);
+
+    if (!profileView) return null;
+
+    const handleSave = (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (newPassword || confirmPassword) {
+        if (newPassword !== confirmPassword) {
+          alert('Las contraseñas no coinciden.');
+          return;
+        }
+      }
+
+      if (profileView === 'agent') {
+        setAgentProfile(formData);
+      } else {
+        setTenantProfile(formData);
+      }
+
+      setProfileView(null);
+      alert('Perfil actualizado correctamente.');
+    };
+
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setProfileView(null)}></div>
+        <div className="bg-white dark:bg-slate-900 w-full max-w-3xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden relative z-10 flex flex-col transition-all animate-in zoom-in-95 duration-200">
+          <div className={`p-6 ${currentTheme.bgClass} text-white flex justify-between items-center`}>
+            <div>
+              <h2 className="text-2xl font-black">Gestor de Perfil</h2>
+              <p className="text-sm opacity-90 mt-1">Actualiza tu información de cuenta</p>
+            </div>
+            <button onClick={() => setProfileView(null)} className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center hover:bg-black/40 transition-colors">
+              <i className="fa-solid fa-xmark text-xl"></i>
+            </button>
+          </div>
+
+          <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex items-center gap-4">
+              {formData.avatarUrl ? (
+                <img src={formData.avatarUrl} alt="Perfil" className="w-20 h-20 rounded-full object-cover" />
+              ) : (
+                <div className={`w-20 h-20 rounded-full ${currentTheme.bgClass} text-white flex items-center justify-center text-xl font-black`}>
+                  {getInitials(formData.name)}
+                </div>
+              )}
+              <div className="flex-1">
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">URL de Foto de Perfil</label>
+                <input
+                  type="url"
+                  value={formData.avatarUrl}
+                  onChange={e => setFormData({ ...formData, avatarUrl: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Nombre</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Rol</label>
+                <input
+                  type="text"
+                  value={formData.role}
+                  disabled
+                  className="w-full p-3 bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-500 dark:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Teléfono</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Bio</label>
+                <textarea
+                  value={formData.bio}
+                  onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                  rows={3}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Contraseña Actual</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Nueva Contraseña</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 mb-2 block">Confirmar Nueva Contraseña</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-800 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, receiveNotifications: !formData.receiveNotifications })}
+                className={`w-full h-[46px] rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors ${formData.receiveNotifications ? `${currentTheme.bgClass} text-white` : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+              >
+                <span className="text-sm font-bold">Notificaciones</span>
+                <div className={`w-12 h-6 rounded-full relative ${formData.receiveNotifications ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.receiveNotifications ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, showOnlineStatus: !formData.showOnlineStatus })}
+                className={`w-full h-[46px] rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 transition-colors ${formData.showOnlineStatus ? `${currentTheme.bgClass} text-white` : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+              >
+                <span className="text-sm font-bold">Mostrar estado</span>
+                <div className={`w-12 h-6 rounded-full relative ${formData.showOnlineStatus ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.showOnlineStatus ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setProfileView(null)}
+                className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className={`flex-1 px-6 py-3 ${currentTheme.bgClass} text-white rounded-xl font-bold shadow-lg hover:brightness-110 transition-all`}
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const ContractDetailModal = () => {
     if (!selectedContract) return null;
     const tenant = tenants.find(t => t.id === selectedContract.tenantId);
@@ -575,8 +819,17 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xl md:text-2xl font-black tracking-tight cursor-pointer" onClick={() => setPublicTab('inicio')}>
-             <span className={currentTheme.textClass}>{config.logoText}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPublicNavOpen(prev => !prev)}
+              className="lg:hidden w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              aria-label="Abrir navegación"
+            >
+              <i className={`fa-solid ${isPublicNavOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
+            </button>
+            <div className="flex items-center gap-2 text-xl md:text-2xl font-black tracking-tight cursor-pointer" onClick={() => setPublicTab('inicio')}>
+               <span className={currentTheme.textClass}>{config.logoText}</span>
+            </div>
           </div>
           <nav className="hidden lg:flex gap-8 font-medium text-slate-600 dark:text-slate-400">
             {['inicio', 'alquileres', 'ventas', 'contacto'].map((t) => (
@@ -592,6 +845,24 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
+        {isPublicNavOpen && (
+          <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2">
+              {['inicio', 'alquileres', 'ventas', 'contacto'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setPublicTab(t as any);
+                    setIsPublicNavOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 rounded-xl font-semibold capitalize transition-colors ${publicTab === t ? `${currentTheme.bgClass} text-white` : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
       
       {publicTab === 'inicio' && (
@@ -709,7 +980,19 @@ const App: React.FC = () => {
       <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 h-16 flex items-center justify-between sticky top-0 z-30 transition-colors">
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-400"><i className="fa-solid fa-bars text-xl"></i></button>
         <span className="font-bold text-slate-800 dark:text-white">{config.logoText}</span>
-        <div className={`w-8 h-8 rounded-full ${currentTheme.bgClass} flex items-center justify-center text-white text-xs font-bold`}>JD</div>
+        <button
+          onClick={() => setProfileView('agent')}
+          className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center"
+          aria-label="Abrir perfil"
+        >
+          {agentProfile.avatarUrl ? (
+            <img src={agentProfile.avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+          ) : (
+            <div className={`w-full h-full ${currentTheme.bgClass} flex items-center justify-center text-white text-xs font-bold`}>
+              {getInitials(agentProfile.name)}
+            </div>
+          )}
+        </button>
       </div>
       
       <main className="p-4 md:p-10 animate-in fade-in duration-500 text-slate-800 dark:text-white">
@@ -718,11 +1001,24 @@ const App: React.FC = () => {
             <h2 className="text-2xl md:text-3xl font-black">¡Hola de nuevo, Juan Dueño! 👋</h2>
             <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Tu inmobiliaria está bajo control hoy.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
              <button onClick={toggleAppearance} className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors shadow-sm">
               <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
              </button>
              <button className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors shadow-sm"><i className="fa-solid fa-bell"></i></button>
+             <button
+               onClick={() => setProfileView('agent')}
+               className="w-11 h-11 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex items-center justify-center shadow-sm"
+               aria-label="Abrir perfil"
+             >
+               {agentProfile.avatarUrl ? (
+                 <img src={agentProfile.avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+               ) : (
+                 <div className={`w-full h-full ${currentTheme.bgClass} flex items-center justify-center text-white text-xs font-bold`}>
+                   {getInitials(agentProfile.name)}
+                 </div>
+               )}
+             </button>
           </div>
         </header>
 
@@ -1034,7 +1330,19 @@ const App: React.FC = () => {
           <button onClick={toggleAppearance} className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
             <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'} text-lg`}></i>
           </button>
-          <div className={`w-10 h-10 rounded-full ${currentTheme.bgClass} flex items-center justify-center text-white font-bold`}>{currentTenant?.name[0] || 'U'}</div>
+          <button
+            onClick={() => setProfileView('tenant')}
+            className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center"
+            aria-label="Abrir perfil"
+          >
+            {tenantProfile.avatarUrl ? (
+              <img src={tenantProfile.avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+            ) : (
+              <div className={`w-full h-full ${currentTheme.bgClass} flex items-center justify-center text-white font-bold`}>
+                {getInitials(tenantProfile.name)}
+              </div>
+            )}
+          </button>
         </div>
       </header>
 
@@ -1202,6 +1510,8 @@ const App: React.FC = () => {
       {view === 'public' && PublicView}
       {view === 'admin' && AdminView}
       {view === 'tenant' && TenantView}
+
+      {ProfileModal()}
 
       {/* Auth Modal */}
       <AuthModal
